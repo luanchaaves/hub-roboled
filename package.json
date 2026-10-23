@@ -1,0 +1,22 @@
+{
+  "name": "roboled-partner-hub-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo corporativo da plataforma ROBÔ LED PARTNER HUB",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces",
+    "dev:api": "npm run dev --workspace=@roboled/api",
+    "dev:web": "npm run dev --workspace=@roboled/web",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "seed": "node scripts/seed.js"
+  },
+  "devDependencies": {
+    "prisma": "^5.14.0",
+    "typescript": "^5.4.5"
+  }
+}

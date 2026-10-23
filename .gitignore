@@ -1,0 +1,44 @@
+# Node dependencies
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js build
+apps/web/.next/
+apps/web/out/
+build/
+dist/
+
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem
+*.key
+*.cert
+
+# Database
+prisma/*.db
+prisma/*.db-journal
+*.sqlite
+*.sqlite-journal
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs & Coverage
+logs/
+*.log
+coverage/
+.nyc_output/

@@ -1,0 +1,106 @@
+services:
+  # =====================================================================
+  # 1. BANCO DE DADOS POSTGRESQL DO HUB
+  # =====================================================================
+  hub-db:
+    image: postgres:16-alpine
+    container_name: roboled-hub-db
+    restart: always
+    environment:
+      POSTGRES_USER: hub_user
+      POSTGRES_PASSWORD: hub_password_secure
+      POSTGRES_DB: roboled_hub
+    ports:
+      - "5432:5432"
+    volumes:
+      - hub_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hub_user -d roboled_hub"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =====================================================================
+  # 2. REDIS (CACHE DE INTEGRAÇÕES & OUTBOX DE EVENTOS)
+  # =====================================================================
+  hub-redis:
+    image: redis:7-alpine
+    container_name: roboled-hub-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - hub_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # =====================================================================
+  # 3. AUTENTICAÇÃO KEYCLOAK (OIDC / SSO)
+  # =====================================================================
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.2
+    container_name: roboled-hub-keycloak
+    restart: always
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin_password_secure
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://hub-db:5432/roboled_hub
+      KC_DB_USERNAME: hub_user
+      KC_DB_PASSWORD: hub_password_secure
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    depends_on:
+      hub-db:
+        condition: service_healthy
+
+  # =====================================================================
+  # 4. BACKEND API BFF (NODE.JS / EXPRESS)
+  # =====================================================================
+  hub-api:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.api
+    container_name: roboled-hub-api
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT_API: 4000
+      DATABASE_URL: "postgresql://hub_user:hub_password_secure@hub-db:5432/roboled_hub?schema=public"
+      REDIS_URL: "redis://hub-redis:6379"
+      KEYCLOAK_URL: "http://keycloak:8080"
+      JWT_SECRET: "super_secret_jwt_token_key_change_in_production_32chars"
+    ports:
+      - "4000:4000"
+    depends_on:
+      hub-db:
+        condition: service_healthy
+      hub-redis:
+        condition: service_healthy
+
+  # =====================================================================
+  # 5. FRONTEND WEB (NEXT.JS 14 APP ROUTER)
+  # =====================================================================
+  hub-web:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.web
+    container_name: roboled-hub-web
+    restart: always
+    environment:
+      NODE_ENV: production
+      PORT_WEB: 3000
+      NEXT_PUBLIC_API_URL: "http://localhost:4000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - hub-api
+
+volumes:
+  hub_postgres_data:
+  hub_redis_data:

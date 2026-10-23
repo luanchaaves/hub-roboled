@@ -1,0 +1,161 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. AUDITORIA E LOGS DE SEGURANÇA
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String
+  userEmail   String
+  userRole    String
+  action      String   // READ, CREATE, UPDATE, DELETE, EXPORT
+  resource    String   // CONTRACT, QUOTE, FINANCIAL, EQUIPMENT, USER
+  details     String?  // JSON stringified details
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([resource])
+  @@index([createdAt])
+}
+
+// 2. CONEXÕES DE INTEGRAÇÃO E HEALTH STATUS
+model IntegrationConnection {
+  id             String   @id @default(uuid())
+  systemName     String   @unique // MARKETING, COTACAO, CONTRATOS, FINANCEIRO, CALENDAR
+  baseUrl        String
+  authType       String   // API_KEY, OAUTH2, BEARER
+  status         String   @default("ONLINE") // ONLINE, DEGRADED, OFFLINE
+  lastSyncAt     DateTime @default(now())
+  latencyMs      Int      @default(0)
+  errorMessage   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  syncRuns       IntegrationSyncRun[]
+}
+
+model IntegrationSyncRun {
+  id              String                @id @default(uuid())
+  connectionId    String
+  connection      IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  status          String                // SUCCESS, FAILED, PARTIAL
+  recordsSynced   Int                   @default(0)
+  errorDetails    String?
+  durationMs      Int                   @default(0)
+  createdAt       DateTime              @default(now())
+}
+
+// 3. MAPEAMENTO DE ENTIDADES EXTERNAS
+model ExternalEntityLink {
+  id                 String   @id @default(uuid())
+  hubEntityId        String   // ID interno do Hub (ex: Evento)
+  externalSystem     String   // MARKETING, COTACAO, CONTRATOS, FINANCEIRO
+  externalEntityId   String   // ID no sistema de origem (ex: quote_123, lead_456)
+  metadata           String?  // JSON com snapshot de dados
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([externalSystem, externalEntityId])
+  @@index([hubEntityId])
+}
+
+// 4. MÓDULO DE OPERAÇÕES - EQUIPAMENTOS
+model Equipment {
+  id              String                 @id @default(uuid())
+  name            String                 // Ex: Robô LED Nextrom, Tequileiro, Cilindro CO2
+  category        String                 // ROBO_LED, PERSONAGEM_VIVO, EFEITOS_PIROTECNICOS, VESTUARIO, BATERIA
+  serialNumber    String                 @unique
+  status          String                 @default("DISPONIVEL") // DISPONIVEL, EM_USO, MANUTENCAO, AVARIADO
+  condition       String                 @default("OTIMO") // EXCELENTE, OTIMO, BOM, REQUER_REVISAO
+  location        String                 @default("Galpão Principal SBC")
+  lastMaintained  DateTime?
+  notes           String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+
+  maintenances    EquipmentMaintenance[]
+  checklistItems  EventChecklistItem[]
+}
+
+model EquipmentMaintenance {
+  id            String    @id @default(uuid())
+  equipmentId   String
+  equipment     Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  type          String    // PREVENTIVA, CORRETIVA, RECARGA_BATERIA, REVISAO_LED
+  cost          Float     @default(0.0)
+  description   String
+  performedBy   String
+  performedAt   DateTime  @default(now())
+}
+
+// 5. MÓDULO DE OPERAÇÕES - EQUIPE & ESCALAS
+model TeamMember {
+  id            String            @id @default(uuid())
+  name          String
+  role          String            // PERFORMANCER_ROBO, OPERADOR_SOM, PRODUTOR_DE_CAMPO, OPERADOR_CO2
+  phone         String
+  email         String            @unique
+  status        String            @default("ATIVO") // ATIVO, INDISPONIVEL, FERIAS
+  notes         String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  assignments   EventAssignment[]
+}
+
+model EventAssignment {
+  id            String     @id @default(uuid())
+  eventId       String     // Reference to contract/event ID
+  teamMemberId  String
+  teamMember    TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  roleInEvent   String
+  status        String     @default("CONFIRMADO") // ESCALADO, CONFIRMADO, PRESENTE
+  assignedAt    DateTime   @default(now())
+}
+
+// 6. MÓDULO DE OPERAÇÕES - CHECKLIST DE EVENTO
+model EventChecklist {
+  id            String               @id @default(uuid())
+  eventId       String               @unique // Event ID from contract/quote
+  eventName     String
+  eventDate     DateTime
+  contactPerson String
+  contactPhone  String
+  location      String
+  status        String               @default("PENDENTE") // PENDENTE, EM_ANDAMENTO, CONCLUIDO
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  items         EventChecklistItem[]
+}
+
+model EventChecklistItem {
+  id            String         @id @default(uuid())
+  checklistId   String
+  checklist     EventChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  equipmentId   String?
+  equipment     Equipment?     @relation(fields: [equipmentId], references: [id])
+  title         String         // Ex: Baterias do Robô Zeus Carregadas 100%
+  completed     Boolean        @default(false)
+  verifiedBy    String?
+  verifiedAt    DateTime?
+}
+
+// 7. NOTIFICAÇÕES PERSISTIDAS DO HUB
+model Notification {
+  id          String   @id @default(uuid())
+  userId      String?  // null = All users
+  title       String
+  message     String
+  type        String   @default("INFO") // INFO, WARNING, ERROR, SUCCESS
+  read        Boolean  @default(false)
+  link        String?
+  createdAt   DateTime @default(now())
+}
