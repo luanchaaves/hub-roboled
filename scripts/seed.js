@@ -8,38 +8,34 @@ async function main() {
   // 1. Seed Integration Connections
   const integrations = [
     {
-      key: 'MARKETING_CRM',
-      name: 'Marketing Digital & CRM',
+      systemName: 'MARKETING_CRM',
       baseUrl: 'https://marketing.roboledpartner.com.br',
-      status: 'ONLINE',
-      syncIntervalMin: 15
+      authType: 'BEARER',
+      status: 'ONLINE'
     },
     {
-      key: 'COTACAO_AUTOMATICA',
-      name: 'Sistema de Cotação Automática',
+      systemName: 'COTACAO_AUTOMATICA',
       baseUrl: 'https://cotacao.roboledpartner.com.br',
-      status: 'ONLINE',
-      syncIntervalMin: 10
+      authType: 'API_KEY',
+      status: 'ONLINE'
     },
     {
-      key: 'SISTEMA_CONTRATOS',
-      name: 'Gerador de Contratos PDF',
+      systemName: 'SISTEMA_CONTRATOS',
       baseUrl: 'https://contrato.roboledpartner.com.br',
-      status: 'ONLINE',
-      syncIntervalMin: 30
+      authType: 'BEARER',
+      status: 'ONLINE'
     },
     {
-      key: 'CONTROLE_FINANCEIRO',
-      name: 'Controle Financeiro & DRE',
+      systemName: 'CONTROLE_FINANCEIRO',
       baseUrl: 'http://localhost:3004',
-      status: 'ONLINE',
-      syncIntervalMin: 60
+      authType: 'API_KEY',
+      status: 'ONLINE'
     }
   ];
 
   for (const conn of integrations) {
     await prisma.integrationConnection.upsert({
-      where: { key: conn.key },
+      where: { systemName: conn.systemName },
       update: conn,
       create: conn
     });
@@ -48,41 +44,42 @@ async function main() {
   // 2. Seed Equipment
   const equipments = [
     {
-      code: 'TITAN-01',
+      serialNumber: 'TITAN-01',
       name: 'Robô LED Titan (2m50)',
       category: 'ROBO_LED',
       status: 'DISPONIVEL',
-      batteryLevel: 98,
+      condition: 'OTIMO',
       notes: 'Bateria e fitas RGB de alta intensidade verificadas'
     },
     {
-      code: 'NEXTROM-01',
+      serialNumber: 'NEXTROM-01',
       name: 'Robô Nextrom Gold',
       category: 'ROBO_LED',
       status: 'DISPONIVEL',
-      batteryLevel: 100,
+      condition: 'EXCELENTE',
       notes: 'Pintura dourada e canhões de laser calibrados'
     },
     {
-      code: 'CO2-10K-01',
+      serialNumber: 'CO2-10K-01',
       name: 'Cilindro CO2 10kg #1',
-      category: 'CILINDRO_CO2',
+      category: 'EFEITOS_PIROTECNICOS',
       status: 'DISPONIVEL',
-      co2PressurePsi: 850,
+      condition: 'OTIMO',
       notes: 'Cilindro recarregado com lacre de segurança'
     },
     {
-      code: 'GERB-3M-SET1',
+      serialNumber: 'GERB-3M-SET1',
       name: 'Gerb Pirotécnico 3m (Kit 4x)',
-      category: 'EFEITO_PIROTECNICO',
+      category: 'EFEITOS_PIROTECNICOS',
       status: 'DISPONIVEL',
+      condition: 'BOM',
       notes: 'Acionadores via rádio e estojos de transporte ok'
     }
   ];
 
   for (const eq of equipments) {
     await prisma.equipment.upsert({
-      where: { code: eq.code },
+      where: { serialNumber: eq.serialNumber },
       update: eq,
       create: eq
     });
@@ -93,41 +90,42 @@ async function main() {
     {
       name: 'Lucas Silva',
       phone: '(11) 98877-4433',
-      role: 'PERFORMER_ROBO',
+      email: 'lucas.silva@roboledpartner.com.br',
+      role: 'PERFORMANCER_ROBO',
       notes: 'Performer titular do Robô Titan'
     },
     {
       name: 'Gabriel Santos',
       phone: '(11) 97766-5544',
-      role: 'TECNICO_EFEITOS',
+      email: 'gabriel.santos@roboledpartner.com.br',
+      role: 'OPERADOR_CO2',
       notes: 'Operador de Bazuca CO2 e Gerbs pirotécnicos'
     },
     {
       name: 'Marcos Oliveira',
       phone: '(11) 99988-1122',
-      role: 'MOTORISTA_LOGISTICA',
+      email: 'marcos.oliveira@roboledpartner.com.br',
+      role: 'PRODUTOR_DE_CAMPO',
       notes: 'Responsável pelo transporte da equipe e robôs'
     }
   ];
 
   for (const member of team) {
-    const existing = await prisma.teamMember.findFirst({
-      where: { name: member.name }
+    await prisma.teamMember.upsert({
+      where: { email: member.email },
+      update: member,
+      create: member
     });
-    if (!existing) {
-      await prisma.teamMember.create({ data: member });
-    }
   }
 
   // 4. Seed Audit Log Initial Record
   await prisma.auditLog.create({
     data: {
       userId: 'usr_admin_default',
-      userName: 'Luan Chaves',
       userEmail: 'luan@roboledpartner.com.br',
-      action: 'SISTEMA_INICIALIZADO',
-      entityType: 'HUB_CORE',
-      entityId: 'HUB-2026',
+      userRole: 'SUPER_ADMIN',
+      action: 'CREATE',
+      resource: 'HUB_CORE',
       details: 'Robô LED Partner Hub inicializado com sucesso. Escopo exclusivo configurado.'
     }
   });
