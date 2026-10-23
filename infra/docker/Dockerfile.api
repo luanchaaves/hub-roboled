@@ -15,6 +15,7 @@ RUN npm install
 
 # Copy source code
 COPY prisma ./prisma
+COPY scripts ./scripts
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api
 
@@ -36,6 +37,7 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages/shared ./packages/shared
 COPY --from=builder /app/apps/api ./apps/api
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 EXPOSE 4000
 
