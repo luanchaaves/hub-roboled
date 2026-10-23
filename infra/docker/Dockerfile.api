@@ -1,5 +1,8 @@
 FROM node:20-alpine AS builder
 
+# Install OpenSSL and build dependencies for Prisma
+RUN apk add --no-cache openssl
+
 WORKDIR /app
 
 # Copy root configurations
@@ -21,6 +24,8 @@ RUN npm run build --workspace=@roboled/shared
 RUN npm run build --workspace=@roboled/api
 
 FROM node:20-alpine AS runner
+
+RUN apk add --no-cache openssl
 
 WORKDIR /app
 
