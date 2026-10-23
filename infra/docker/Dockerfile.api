@@ -1,19 +1,19 @@
 FROM node:20-alpine AS builder
 
-# Install OpenSSL and build dependencies for Prisma
 RUN apk add --no-cache openssl
 
 WORKDIR /app
 
-# Copy root configurations
+# Copy root and all workspace package files so npm install resolves all workspace links
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
 
 # Install dependencies
 RUN npm install
 
-# Copy source files
+# Copy source code
 COPY prisma ./prisma
 COPY packages/shared ./packages/shared
 COPY apps/api ./apps/api

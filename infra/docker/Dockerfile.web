@@ -4,8 +4,10 @@ RUN apk add --no-cache openssl
 
 WORKDIR /app
 
+# Copy root and all workspace package files so npm install resolves all workspace links
 COPY package.json package-lock.json ./
 COPY packages/shared/package.json ./packages/shared/
+COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 
 RUN npm install
